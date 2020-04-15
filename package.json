@@ -28,7 +28,8 @@
     "bundle": "npm run tsc && npx browserify -r ./index.js:puppeteer -o utils/browser/puppeteer-web.js",
     "test-types": "node utils/doclint/generate_types && tsc --version && tsc -p utils/doclint/generate_types/test/",
     "unit-bundle": "mocha --config mocha-config/browser-bundle-tests.js",
-    "update-protocol-d-ts": "node utils/protocol-types-generator"
+    "update-protocol-d-ts": "node utils/protocol-types-generator",
+    "test-public-api-docs": "tsc -p utils/doclint/public-api && node utils/doclint/public-api/out/cli.js"
   },
   "author": "The Chromium Authors",
   "license": "Apache-2.0",
@@ -48,6 +49,7 @@
   },
   "devDependencies": {
     "@types/debug": "0.0.31",
+    "@types/marked": "^0.7.4",
     "@types/mime": "^2.0.0",
     "@types/node": "^10.17.14",
     "@types/rimraf": "^2.0.2",
@@ -62,6 +64,7 @@
     "esprima": "^4.0.0",
     "expect": "^25.2.7",
     "jpeg-js": "^0.3.4",
+    "marked": "^0.8.2",
     "minimist": "^1.2.0",
     "mocha": "^7.1.1",
     "ncp": "^2.0.0",

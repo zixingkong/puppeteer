@@ -15,3 +15,5 @@ yarn.lock
 /utils/browser/puppeteer-web.js
 /index.d.ts
 /lib
+
+/utils/doclint/public-api/out

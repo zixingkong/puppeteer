@@ -7,6 +7,13 @@ module.exports = {
 
     "parser": "@typescript-eslint/parser",
 
+    "parserOptions": {
+        "sourceType": "module",
+        "ecmaFeatures": {
+            "modules": true
+        }
+    },
+
     "plugins": [
         "mocha",
         "@typescript-eslint"
