@@ -446,5 +446,91 @@ describe('ElementHandle specs', function () {
       );
       expect(txtContents).toBe('textcontent');
     });
+
+    it('should allow piercing shadow dom', async () => {
+      const { page, puppeteer } = getTestState();
+      await page.setContent(
+        `<div id="not-foo"></div><div class="foo">text</div><div class="foo baz">content</div>
+        <script>
+        let bar1 = null;
+        let bar2 = null;
+        window.addEventListener('DOMContentLoaded', () => {
+          const shadowRoot = document.body.attachShadow({mode: 'open'});
+          bar1 = document.createElement('bar');
+          bar2 = document.createElement('bar');
+          bar3 = document.createElement('bar');
+          bar1.className = 'Text in';
+          bar2.className = 'nested';
+          bar3.className = 'Shadow DOM';
+          bar1.appendChild(bar2);
+          shadowRoot.appendChild(bar1);
+          shadowRoot.appendChild(bar3);
+        });
+        </script>
+        `
+      );
+      function querySelectorShadowOne(
+        element: Element | Document | ShadowRoot,
+        selector: string
+      ): Element | null {
+        let res;
+        const search = (root: Element | Document | ShadowRoot) => {
+          const iter = document.createNodeIterator(
+            root,
+            NodeFilter.SHOW_ELEMENT
+          );
+          let currentNode;
+          while (!res && (currentNode = iter.nextNode())) {
+            if (currentNode.shadowRoot) {
+              search(currentNode.shadowRoot);
+            }
+            if (!res && currentNode.matches(selector)) {
+              res = currentNode;
+            }
+          }
+        };
+        search(element);
+        return res;
+      }
+
+      function querySelectorShadowAll(
+        element: Element | Document,
+        selector: string
+      ): Element[] {
+        const result = [];
+        const collect = (root: Element | Document | ShadowRoot) => {
+          const iter = document.createNodeIterator(
+            root,
+            NodeFilter.SHOW_ELEMENT
+          );
+          let currentNode;
+          while ((currentNode = iter.nextNode())) {
+            if (currentNode.shadowRoot) {
+              collect(currentNode.shadowRoot);
+            }
+            if (currentNode.matches(selector)) {
+              result.push(currentNode);
+            }
+          }
+        };
+        collect(element);
+        return result;
+      }
+      puppeteer.__experimental_registerCustomQueryHandler('pierceShadow', {
+        queryOne: querySelectorShadowOne,
+        queryAll: querySelectorShadowAll,
+      });
+
+      const txtContent = await page.$eval(
+        'pierceShadow/bar',
+        (bar) => bar.className
+      );
+      expect(txtContent).toBe('Text in');
+
+      const txtContents = await page.$$eval('pierceShadow/bar', (bars) =>
+        bars.map((d) => d.className).join(' ')
+      );
+      expect(txtContents).toBe('Text in nested Shadow DOM');
+    });
   });
 });
