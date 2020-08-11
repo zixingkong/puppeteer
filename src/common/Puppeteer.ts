@@ -34,6 +34,7 @@ import {
   customQueryHandlers,
   clearQueryHandlers,
   QueryHandler,
+  ariaQueryHandler,
 } from './QueryHandler.js';
 import { PUPPETEER_REVISIONS } from '../revisions.js';
 
@@ -317,4 +318,10 @@ export class Puppeteer {
   __experimental_clearQueryHandlers(): void {
     clearQueryHandlers();
   }
+
+  /**
+   * @internal
+   */
+  // eslint-disable-next-line @typescript-eslint/camelcase
+  __experimental_ariaQueryHandler: QueryHandler = ariaQueryHandler;
 }

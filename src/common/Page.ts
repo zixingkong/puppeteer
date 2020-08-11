@@ -1954,6 +1954,15 @@ export class Page extends EventEmitter {
   ): Promise<JSHandle> {
     return this.mainFrame().waitForFunction(pageFunction, options, ...args);
   }
+
+  async resolveBackendDOMNodeId(
+    backendDOMNodeId: number
+  ): Promise<ElementHandle> {
+    const executionContext = await this._frameManager
+      .mainFrame()
+      .executionContext();
+    return executionContext._adoptBackendNodeId(backendDOMNodeId);
+  }
 }
 
 const supportedMetrics = new Set<string>([

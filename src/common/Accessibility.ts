@@ -89,6 +89,10 @@ export interface SerializedAXNode {
    * Children of this node, if there are any.
    */
   children?: SerializedAXNode[];
+  /**
+   * The backend ID for te associated DOM node, if any
+   */
+  backendDOMNodeId?: number;
 }
 
 /**
@@ -96,15 +100,16 @@ export interface SerializedAXNode {
  */
 export interface SnapshotOptions {
   /**
-   * Prune unintersting nodes from the tree.
+   * Prune uninteresting nodes from the tree.
    * @defaultValue true
    */
   interestingOnly?: boolean;
   /**
-   * Prune unintersting nodes from the tree.
+   * Root node to get the accessibility tree for
    * @defaultValue The root node of the entire page.
    */
   root?: ElementHandle;
+  includeBackendDOMNodeId?: boolean;
 }
 
 /**
@@ -181,7 +186,11 @@ export class Accessibility {
   public async snapshot(
     options: SnapshotOptions = {}
   ): Promise<SerializedAXNode> {
-    const { interestingOnly = true, root = null } = options;
+    const {
+      interestingOnly = true,
+      root = null,
+      includeBackendDOMNodeId = false,
+    } = options;
     const { nodes } = await this._client.send('Accessibility.getFullAXTree');
     let backendNodeId = null;
     if (root) {
@@ -198,25 +207,33 @@ export class Accessibility {
       );
       if (!needle) return null;
     }
-    if (!interestingOnly) return this.serializeTree(needle)[0];
+    if (!interestingOnly)
+      return this.serializeTree(needle, includeBackendDOMNodeId)[0];
 
     const interestingNodes = new Set<AXNode>();
     this.collectInterestingNodes(interestingNodes, defaultRoot, false);
     if (!interestingNodes.has(needle)) return null;
-    return this.serializeTree(needle, interestingNodes)[0];
+    return this.serializeTree(
+      needle,
+      includeBackendDOMNodeId,
+      interestingNodes
+    )[0];
   }
 
   private serializeTree(
     node: AXNode,
+    includeBackendDOMNodeId: boolean,
     interestingNodes?: Set<AXNode>
   ): SerializedAXNode[] {
     const children: SerializedAXNode[] = [];
     for (const child of node.children)
-      children.push(...this.serializeTree(child, interestingNodes));
+      children.push(
+        ...this.serializeTree(child, includeBackendDOMNodeId, interestingNodes)
+      );
 
     if (interestingNodes && !interestingNodes.has(node)) return children;
 
-    const serializedNode = node.serialize();
+    const serializedNode = node.serialize(includeBackendDOMNodeId);
     if (children.length) serializedNode.children = children;
     return [serializedNode];
   }
@@ -239,17 +256,21 @@ class AXNode {
   public children: AXNode[] = [];
 
   private _richlyEditable = false;
+  private _ignored = false;
   private _editable = false;
   private _focusable = false;
   private _hidden = false;
   private _name: string;
   private _role: string;
   private _cachedHasFocusableChild?: boolean;
+  private _backendDOMNodeId?: number;
 
   constructor(payload: Protocol.Accessibility.AXNode) {
     this.payload = payload;
+    this._ignored = this.payload.ignored;
     this._name = this.payload.name ? this.payload.name.value : '';
     this._role = this.payload.role ? this.payload.role.value : 'Unknown';
+    this._backendDOMNodeId = this.payload.backendDOMNodeId;
 
     for (const property of this.payload.properties || []) {
       if (property.name === 'editable') {
@@ -264,11 +285,7 @@ class AXNode {
   private _isPlainTextField(): boolean {
     if (this._richlyEditable) return false;
     if (this._editable) return true;
-    return (
-      this._role === 'textbox' ||
-      this._role === 'ComboBox' ||
-      this._role === 'searchbox'
-    );
+    return this._role === 'textbox' || this._role === 'searchbox';
   }
 
   private _isTextOnlyObject(): boolean {
@@ -354,6 +371,7 @@ class AXNode {
       case 'tab':
       case 'textbox':
       case 'tree':
+      case 'treeitem':
         return true;
       default:
         return false;
@@ -363,6 +381,7 @@ class AXNode {
   public isInteresting(insideControl: boolean): boolean {
     const role = this._role;
     if (role === 'Ignored' || this._hidden) return false;
+    if (this._ignored) return false;
 
     if (this._focusable || this._richlyEditable) return true;
 
@@ -375,7 +394,7 @@ class AXNode {
     return this.isLeafNode() && !!this._name;
   }
 
-  public serialize(): SerializedAXNode {
+  public serialize(includeBackendDOMNodeId: boolean): SerializedAXNode {
     const properties = new Map<string, number | string | boolean>();
     for (const property of this.payload.properties || [])
       properties.set(property.name.toLowerCase(), property.value.value);
@@ -383,10 +402,16 @@ class AXNode {
     if (this.payload.value) properties.set('value', this.payload.value.value);
     if (this.payload.description)
       properties.set('description', this.payload.description.value);
+    if (this.payload.backendDOMNodeId)
+      properties.set('backendDOMNodeId', this.payload.backendDOMNodeId);
 
     const node: SerializedAXNode = {
       role: this._role,
     };
+
+    if (includeBackendDOMNodeId) {
+      node.backendDOMNodeId = this._backendDOMNodeId;
+    }
 
     type UserStringProperty =
       | 'name'

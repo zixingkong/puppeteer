@@ -256,7 +256,7 @@ export class FrameManager extends EventEmitter {
     if (this._frames.has(frameId)) return;
     assert(parentFrameId);
     const parentFrame = this._frames.get(parentFrameId);
-    const frame = new Frame(this, parentFrame, frameId);
+    const frame = new Frame(this, parentFrame, frameId, this._page);
     this._frames.set(frame._id, frame);
     this.emit(FrameManagerEmittedEvents.FrameAttached, frame);
   }
@@ -285,7 +285,7 @@ export class FrameManager extends EventEmitter {
         frame._id = framePayload.id;
       } else {
         // Initial main frame navigation.
-        frame = new Frame(this, null, framePayload.id);
+        frame = new Frame(this, null, framePayload.id, this._page);
       }
       this._frames.set(framePayload.id, frame);
       this._mainFrame = frame;
@@ -522,6 +522,10 @@ export class Frame {
   /**
    * @internal
    */
+  _page: Page;
+  /**
+   * @internal
+   */
   _loaderId = '';
   /**
    * @internal
@@ -551,13 +555,15 @@ export class Frame {
   constructor(
     frameManager: FrameManager,
     parentFrame: Frame | null,
-    frameId: string
+    frameId: string,
+    page: Page
   ) {
     this._frameManager = frameManager;
     this._parentFrame = parentFrame;
     this._url = '';
     this._id = frameId;
     this._detached = false;
+    this._page = page;
 
     this._loaderId = '';
     this._mainWorld = new DOMWorld(

@@ -533,4 +533,96 @@ describe('ElementHandle specs', function () {
       expect(txtContents).toBe('Text in nested Shadow DOM');
     });
   });
+
+  describe('Querying by accessible name and role', () => {
+    before(() => {
+        const { puppeteer } = getTestState();
+      puppeteer.__experimental_registerCustomQueryHandler(
+        'aria',
+        puppeteer.__experimental_ariaQueryHandler
+      );
+    })
+    describe('can find button element', () => {
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(
+          '<div id="div"><button id="btn" role="button">Submit</button></div>'
+        );
+      });
+
+      it('should find button by role', async () => {
+        const { page } = getTestState();
+        const button = await page.$('aria/&button');
+        const id = await button.evaluate((b: Element) => b.id);
+        expect(id).toBe('btn');
+      });
+
+      it('should find button by name and role', async () => {
+        const { page } = getTestState();
+        const button = await page.$('aria/Submit&button');
+        const id = await button.evaluate((b: Element) => b.id);
+        expect(id).toBe('btn');
+      });
+    });
+
+    describe('should find first matching element', () => {
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(`
+                              <div role="menu" id="mnu1" aria-label="menu div"></div>
+                              <div role="menu" id="mnu2" aria-label="menu div"></div>
+                              `);
+      });
+
+      it('should find by name', async () => {
+        const { page } = getTestState();
+        const div = await page.$('aria/menu div');
+        const id = await div.evaluate((b: Element) => b.id);
+        expect(id).toBe('mnu1');
+      });
+    });
+
+    describe('should find all matching elements', () => {
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(`
+                              <div role="menu" id="mnu1" aria-label="menu div"></div>
+                              <div role="menu" id="mnu2" aria-label="menu div"></div>
+                              `);
+      });
+
+      it('should find menu by name', async () => {
+        const { page } = getTestState();
+        const divs = await page.$$('aria/menu div');
+        const ids = await Promise.all(
+          divs.map((n) => n.evaluate((b: Element) => b.id))
+        );
+        expect(ids.join(', ')).toBe('mnu1, mnu2');
+      });
+    });
+
+    describe('should find name sourced from aria-label', () => {
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(`
+                              <div role="menu" id="mnu1" aria-label="menu-label1">menu div</div>
+                              <div role="menu" id="mnu2" aria-label="menu-label2">menu div</div>
+                              `);
+      });
+
+      it('should find by name', async () => {
+        const { page } = getTestState();
+        const menu = await page.$('aria/menu-label1');
+        const id = await menu.evaluate((b: Element) => b.id);
+        expect(id).toBe('mnu1');
+      });
+
+      it('should find by name', async () => {
+        const { page } = getTestState();
+        const menu = await page.$('aria/menu-label2');
+        const id = await menu.evaluate((b: Element) => b.id);
+        expect(id).toBe('mnu2');
+      });
+    });
+  });
 });

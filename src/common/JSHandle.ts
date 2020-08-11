@@ -21,7 +21,10 @@ import { Page } from './Page.js';
 import { CDPSession } from './Connection.js';
 import { KeyInput } from './USKeyboardLayout.js';
 import { FrameManager, Frame } from './FrameManager.js';
-import { getQueryHandlerAndSelector } from './QueryHandler.js';
+import {
+  getQueryHandlerAndSelector,
+  isInPptrQueryHandler,
+} from './QueryHandler.js';
 import { Protocol } from 'devtools-protocol';
 import {
   EvaluateFn,
@@ -778,6 +781,10 @@ export class ElementHandle<
       selector
     );
 
+    if (isInPptrQueryHandler(queryHandler)) {
+      return queryHandler.findOne(this, updatedSelector);
+    }
+
     const handle = await this.evaluateHandle(
       queryHandler.queryOne,
       updatedSelector
@@ -796,6 +803,10 @@ export class ElementHandle<
     const { updatedSelector, queryHandler } = getQueryHandlerAndSelector(
       selector
     );
+
+    if (isInPptrQueryHandler(queryHandler)) {
+      return queryHandler.findAll(this, updatedSelector);
+    }
 
     const handles = await this.evaluateHandle(
       queryHandler.queryAll,
@@ -892,6 +903,11 @@ export class ElementHandle<
     const { updatedSelector, queryHandler } = getQueryHandlerAndSelector(
       selector
     );
+
+    if (isInPptrQueryHandler(queryHandler)) {
+      throw new Error('not implemented');
+    }
+
     const queryHandlerToArray = Function(
       'element',
       'selector',
