@@ -169,6 +169,7 @@ class ChromeLauncher implements ProductLauncher {
     const chromeArguments = [
       '--disable-background-networking',
       '--enable-features=NetworkService,NetworkServiceInProcess',
+      '--enable-blink-features=ComputedAccessibilityInfo',
       '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows',
       '--disable-breakpad',

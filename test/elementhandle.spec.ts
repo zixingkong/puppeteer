@@ -536,12 +536,16 @@ describe('ElementHandle specs', function () {
 
   describe('Querying by accessible name and role', () => {
     before(() => {
-        const { puppeteer } = getTestState();
+      const { puppeteer } = getTestState();
       puppeteer.__experimental_registerCustomQueryHandler(
         'aria',
         puppeteer.__experimental_ariaQueryHandler
       );
-    })
+    });
+    after(() => {
+      const { puppeteer } = getTestState();
+      puppeteer.__experimental_clearQueryHandlers();
+    });
     describe('can find button element', () => {
       beforeEach(async () => {
         const { page } = getTestState();

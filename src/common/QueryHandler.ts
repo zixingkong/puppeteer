@@ -187,12 +187,70 @@ async function ariaFindAll(
   const exeCtx = element.executionContext();
   const { name, role } = parseAriaSelector(selector);
   const axTree = await getAXTree(exeCtx, element);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const res = traverseTree(axTree, ariaMatcher(name, role), (_) => false);
   const resHandles = Promise.all(res.map((axNode) => toHandle(exeCtx, axNode)));
   return resHandles;
 }
 
-export const ariaQueryHandler: InPptrQueryHandler = {
+function ariaQueryOne(
+  element: Element | Document | ShadowRoot,
+  selector: string
+): Element | null {
+  const s = selector.split('&');
+  const { name, role } =
+    s.length > 1 ? { name: s[0], role: s[1] } : { name: s[0], role: '' };
+  let res;
+  const search = (root: Element | Document | ShadowRoot) => {
+    const iter = document.createNodeIterator(root, NodeFilter.SHOW_ELEMENT);
+    let currentNode;
+    while (!res && (currentNode = iter.nextNode())) {
+      if (currentNode.shadowRoot) {
+        search(currentNode.shadowRoot);
+      }
+      const nameMatch = !name || currentNode.computedName === name;
+      const roleMatch = !role || currentNode.computedRole === role;
+      if (nameMatch && roleMatch) {
+        res = currentNode;
+      }
+    }
+  };
+  search(element);
+  return res;
+}
+
+function ariaQueryAll(
+  element: Element | Document,
+  selector: string
+): Element[] {
+  const s = selector.split('&');
+  const { name, role } =
+    s.length > 1 ? { name: s[0], role: s[1] } : { name: s[0], role: '' };
+  const result = [];
+  const collect = (root: Element | Document | ShadowRoot) => {
+    const iter = document.createNodeIterator(root, NodeFilter.SHOW_ELEMENT);
+    let currentNode;
+    while ((currentNode = iter.nextNode())) {
+      if (currentNode.shadowRoot) {
+        collect(currentNode.shadowRoot);
+      }
+      const nameMatch = !name || currentNode.computedName === name;
+      const roleMatch = !role || currentNode.computedRole === role;
+      if (nameMatch && roleMatch) {
+        result.push(currentNode);
+      }
+    }
+  };
+  collect(element);
+  return result;
+}
+
+export const ariaInPptrQueryHandler: InPptrQueryHandler = {
   findOne: ariaFindOne,
   findAll: ariaFindAll,
+};
+
+export const ariaQueryHandler: QueryHandler = {
+  queryOne: ariaQueryOne,
+  queryAll: ariaQueryAll,
 };
