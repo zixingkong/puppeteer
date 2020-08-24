@@ -156,12 +156,12 @@ function ariaMatcher(
 
 function toHandle(
   exeCtx: ExecutionContext,
-  node: SerializedAXNode
+  backendNodeId: number
 ): Promise<ElementHandle> {
-  return exeCtx._adoptBackendNodeId(node.backendDOMNodeId);
+  return exeCtx._adoptBackendNodeId(backendNodeId);
 }
 
-async function ariaFindOne(
+async function ariaFindOneThroughAXTree(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle> {
@@ -176,11 +176,11 @@ async function ariaFindOne(
   if (res.length < 1) {
     return null;
   }
-  const handle = toHandle(exeCtx, res[0]);
+  const handle = toHandle(exeCtx, res[0].backendDOMNodeId);
   return handle;
 }
 
-async function ariaFindAll(
+async function ariaFindAllThroughAXTree(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle[]> {
@@ -189,11 +189,61 @@ async function ariaFindAll(
   const axTree = await getAXTree(exeCtx, element);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const res = traverseTree(axTree, ariaMatcher(name, role), (_) => false);
-  const resHandles = Promise.all(res.map((axNode) => toHandle(exeCtx, axNode)));
+  const resHandles = Promise.all(
+    res.map((axNode) => toHandle(exeCtx, axNode.backendDOMNodeId))
+  );
   return resHandles;
 }
 
-function ariaQueryOne(
+async function getIdsByAccessibleName(
+  element: ElementHandle,
+  name: string
+): Promise<number[]> {
+  const client = element._client;
+  // @ts-ignore
+  const { backendNodeIds } = await client.send(
+    // @ts-ignore
+    'DOM.getIdsForSubtreeByAccessibleName',
+    {
+      objectId: element._remoteObject.objectId,
+      name,
+    }
+  );
+  // @ts-ignore
+  return backendNodeIds;
+}
+
+async function ariaFindOneThroughCDP(
+  element: ElementHandle,
+  selector: string
+): Promise<ElementHandle> {
+  const exeCtx = element.executionContext();
+  const { name } = parseAriaSelector(selector);
+  const backendIds = await getIdsByAccessibleName(element, name);
+  if (backendIds.length === 0) {
+    return null;
+  }
+  const handle = await toHandle(exeCtx, backendIds[0]);
+  return handle;
+}
+
+async function ariaFindAllThroughCDP(
+  element: ElementHandle,
+  selector: string
+): Promise<ElementHandle[]> {
+  const exeCtx = element.executionContext();
+  const { name } = parseAriaSelector(selector);
+  const backendIds = await getIdsByAccessibleName(element, name);
+  if (backendIds.length === 0) {
+    return null;
+  }
+  const handles = await Promise.all(
+    backendIds.map((id) => toHandle(exeCtx, id))
+  );
+  return handles;
+}
+
+function ariaQueryOneThroughDOM(
   element: Element | Document | ShadowRoot,
   selector: string
 ): Element | null {
@@ -219,7 +269,7 @@ function ariaQueryOne(
   return res;
 }
 
-function ariaQueryAll(
+function ariaQueryAllThroughDOM(
   element: Element | Document,
   selector: string
 ): Element[] {
@@ -245,12 +295,17 @@ function ariaQueryAll(
   return result;
 }
 
-export const ariaInPptrQueryHandler: InPptrQueryHandler = {
-  findOne: ariaFindOne,
-  findAll: ariaFindAll,
+export const ariaThroughAXTreeQueryHandler: InPptrQueryHandler = {
+  findOne: ariaFindOneThroughAXTree,
+  findAll: ariaFindAllThroughAXTree,
 };
 
-export const ariaQueryHandler: QueryHandler = {
-  queryOne: ariaQueryOne,
-  queryAll: ariaQueryAll,
+export const ariaThroughCDPQueryHandler: InPptrQueryHandler = {
+  findOne: ariaFindOneThroughCDP,
+  findAll: ariaFindAllThroughCDP,
+};
+
+export const ariaThroughDOMQueryHandler: QueryHandler = {
+  queryOne: ariaQueryOneThroughDOM,
+  queryAll: ariaQueryAllThroughDOM,
 };

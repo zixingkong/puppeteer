@@ -555,7 +555,7 @@ describe('ElementHandle specs', function () {
         );
       });
 
-      it('should find button by role', async () => {
+      it.skip('should find button by role', async () => {
         const { page } = getTestState();
         const button = await page.$('aria/&button');
         const id = await button.evaluate((b: Element) => b.id);
