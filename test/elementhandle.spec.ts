@@ -26,6 +26,7 @@ import {
 
 import utils from './utils.js';
 import { ElementHandle } from '../lib/cjs/puppeteer/common/JSHandle.js';
+import { Page } from '../lib/cjs/puppeteer/common/Page.js';
 
 describe('ElementHandle specs', function () {
   setupTestBrowserHooks();
@@ -626,6 +627,38 @@ describe('ElementHandle specs', function () {
         const menu = await page.$('aria/menu-label2');
         const id = await menu.evaluate((b: Element) => b.id);
         expect(id).toBe('mnu2');
+      });
+    });
+
+    describe('can create selector and find same element', async () => {
+      async function getAriaSelector(element: ElementHandle): Promise<string> {
+        const { name, role } = await element.evaluate((element) => {
+          const e = element as any;
+          return { name: e.computedName, role: e.computedRole };
+        });
+        return `aria/${name}&${role}`;
+      }
+      async function checkSelectorUnique(
+        page: Page,
+        selector: string
+      ): Promise<boolean> {
+        const all = await page.$$(selector);
+        return all.length === 1;
+      }
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(`
+                              <div role="menu" id="mnu1" aria-label="menu-label1">menu div</div>
+                              <div role="menu" id="mnu2" aria-label="menu-label2">menu div</div>
+                              `);
+      });
+      it('can create name selector and find again', async () => {
+        const { page } = getTestState();
+        const mnu1A = await page.$('#mnu1');
+        const ariaSelector = await getAriaSelector(mnu1A);
+        expect(await checkSelectorUnique(page, ariaSelector)).toBeTruthy();
+        const mnu1B = await page.$(ariaSelector);
+        expect(mnu1B.jsonValue).toBe(mnu1A.jsonValue);
       });
     });
   });
