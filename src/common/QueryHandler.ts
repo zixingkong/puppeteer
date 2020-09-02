@@ -154,7 +154,14 @@ function ariaMatcher(
   };
 }
 
-function toHandle(
+function nodeIdtoHandle(
+  exeCtx: ExecutionContext,
+  nodeId: number
+): Promise<ElementHandle> {
+  return exeCtx._adoptNodeId(nodeId);
+}
+
+function backendNodeIdtoHandle(
   exeCtx: ExecutionContext,
   backendNodeId: number
 ): Promise<ElementHandle> {
@@ -176,7 +183,7 @@ async function ariaFindOneThroughAXTree(
   if (res.length < 1) {
     return null;
   }
-  const handle = toHandle(exeCtx, res[0].backendDOMNodeId);
+  const handle = backendNodeIdtoHandle(exeCtx, res[0].backendDOMNodeId);
   return handle;
 }
 
@@ -190,27 +197,27 @@ async function ariaFindAllThroughAXTree(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const res = traverseTree(axTree, ariaMatcher(name, role), (_) => false);
   const resHandles = Promise.all(
-    res.map((axNode) => toHandle(exeCtx, axNode.backendDOMNodeId))
+    res.map((axNode) => backendNodeIdtoHandle(exeCtx, axNode.backendDOMNodeId))
   );
   return resHandles;
 }
 
 async function getIdsByAccessibleName(
   element: ElementHandle,
-  name: string
+  accessibleName: string
 ): Promise<number[]> {
   const client = element._client;
   // @ts-ignore
-  const { backendNodeIds } = await client.send(
+  const { nodeIds } = await client.send(
     // @ts-ignore
-    'DOM.getIdsForSubtreeByAccessibleName',
+    'DOM.getNodesForSubtreeByAccessibleNameAndRole',
     {
       objectId: element._remoteObject.objectId,
-      name,
+      accessibleName,
     }
   );
   // @ts-ignore
-  return backendNodeIds;
+  return nodeIds;
 }
 
 async function ariaFindOneThroughCDP(
@@ -219,11 +226,11 @@ async function ariaFindOneThroughCDP(
 ): Promise<ElementHandle> {
   const exeCtx = element.executionContext();
   const { name } = parseAriaSelector(selector);
-  const backendIds = await getIdsByAccessibleName(element, name);
-  if (backendIds.length === 0) {
+  const nodeIds = await getIdsByAccessibleName(element, name);
+  if (nodeIds.length === 0) {
     return null;
   }
-  const handle = await toHandle(exeCtx, backendIds[0]);
+  const handle = await backendNodeIdtoHandle(exeCtx, nodeIds[0]);
   return handle;
 }
 
@@ -233,12 +240,12 @@ async function ariaFindAllThroughCDP(
 ): Promise<ElementHandle[]> {
   const exeCtx = element.executionContext();
   const { name } = parseAriaSelector(selector);
-  const backendIds = await getIdsByAccessibleName(element, name);
-  if (backendIds.length === 0) {
+  const nodeIds = await getIdsByAccessibleName(element, name);
+  if (nodeIds.length === 0) {
     return null;
   }
   const handles = await Promise.all(
-    backendIds.map((id) => toHandle(exeCtx, id))
+    nodeIds.map((id) => backendNodeIdtoHandle(exeCtx, id))
   );
   return handles;
 }

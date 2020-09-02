@@ -368,6 +368,17 @@ export class ExecutionContext {
   /**
    * @internal
    */
+  async _adoptNodeId(nodeId: Protocol.DOM.NodeId): Promise<ElementHandle> {
+    const { object } = await this._client.send('DOM.resolveNode', {
+      nodeId: nodeId,
+      executionContextId: this._contextId,
+    });
+    return createJSHandle(this, object) as ElementHandle;
+  }
+
+  /**
+   * @internal
+   */
   async _adoptElementHandle(
     elementHandle: ElementHandle
   ): Promise<ElementHandle> {

@@ -540,7 +540,7 @@ describe('ElementHandle specs', function () {
       const { puppeteer } = getTestState();
       puppeteer.__experimental_registerCustomQueryHandler(
         'aria',
-        puppeteer.__experimental_ariaQueryHandler
+        puppeteer.__experimental_ariaQueryHandlerDOM
       );
     });
     after(() => {
