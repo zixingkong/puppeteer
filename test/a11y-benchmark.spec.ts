@@ -23,12 +23,12 @@ import {
 
 import { ElementHandle } from '../lib/cjs/puppeteer/common/JSHandle.js';
 import {
-  ariaThroughAXTreeQueryHandler,
-  ariaThroughCDPQueryHandler,
+  ariaThroughCDPAXTreeQueryHandler,
+  ariaThroughCDPDOMQueryHandler,
   ariaThroughDOMQueryHandler,
 } from '../lib/cjs/puppeteer/common/QueryHandler.js';
 
-describe.only('benchmark for different querying strategies', () => {
+describe('benchmark for different querying strategies', () => {
   setupTestBrowserHooks();
   setupTestPageAndContextHooks();
   const logs = [];
@@ -38,8 +38,13 @@ describe.only('benchmark for different querying strategies', () => {
   });
   beforeEach(async () => {
     const { page } = getTestState();
+    // Reload the target page.
+    await page.goto('data:text/html,', { waitUntil: ['domcontentloaded'] });
+    // @ts-ignore
+    // await page._client.send('Accessibility.enable', {});
     await page.setContent(
       `
+      <h2>not title</h2>
       <!--
         We increase size of document to simulate a more realistic setting.
         The avg # elements for pages in the wild appears to be 300-400
@@ -108,52 +113,68 @@ describe.only('benchmark for different querying strategies', () => {
       </div>
       <div aria-describedby="node30"></div>
       <!-- Accessible name for the <div> is "item1 item2 item3" -->
-      `
+      `,
+      { waitUntil: ['domcontentloaded'] }
     );
   });
-  const handlers = [
-    { name: 'handler through DOM', handler: ariaThroughDOMQueryHandler },
-    { name: 'handler through AXTree', handler: ariaThroughAXTreeQueryHandler },
-    { name: 'handler through CDP', handler: ariaThroughCDPQueryHandler },
-  ];
-  for (const { name, handler } of handlers) {
-    describe('Querying by accessible name and role', function () {
-      this.timeout(0);
-      beforeEach(() => {
-        const { puppeteer } = getTestState();
-        puppeteer.__experimental_registerCustomQueryHandler('aria', handler);
-      });
-      afterEach(() => {
-        const { puppeteer } = getTestState();
-        puppeteer.__experimental_clearQueryHandlers();
-      });
-      it('handle testGetNodesForSubtreeByAccessibleNameAndRole', async () => {
-        const { page } = getTestState();
-        const getIds = async (elements: ElementHandle[]) =>
-          Promise.all(
-            elements.map((element) =>
-              element.evaluate((element: Element) => element.id)
-            )
-          );
-        const timeStart = Date.now();
-        for (let i = 0; i < 1000; i++) {
-          let found: ElementHandle[], ids: string[];
-          found = await page.$$('aria/foo');
-          ids = await getIds(found);
-          expect(ids).toEqual(['node3', 'node5', 'node6']);
-          found = await page.$$('aria/bar');
-          ids = await getIds(found);
-          expect(ids).toEqual(['node1', 'node2', 'node8']);
-          found = await page.$$('aria/item1 item2 item3');
-          ids = await getIds(found);
-          expect(ids).toEqual(['node30']);
-        }
-        const timeEnd = Date.now();
-        logs.push(
-          `Testing using ${name} took
-          ${((timeEnd - timeStart) / 1000).toFixed(2)} seconds`
-        );
-      });
+  describe('Querying by accessible name and role', function () {
+    this.timeout(0);
+    afterEach(() => {
+      const { puppeteer } = getTestState();
+      puppeteer.__experimental_clearQueryHandlers();
     });
-  }
+
+    const runTest = async (page, name) => {
+      const getIds = async (elements: ElementHandle[]) =>
+        Promise.all(
+          elements.map((element) =>
+            element.evaluate((element: Element) => element.id)
+          )
+        );
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const timeStart = Date.now();
+      for (let i = 0; i < 1000; i++) {
+        let found: ElementHandle[], ids: string[];
+        found = await page.$$('aria/foo');
+        ids = await getIds(found);
+        expect(ids).toEqual(['node3', 'node5', 'node6']);
+        found = await page.$$('aria/bar');
+        ids = await getIds(found);
+        expect(ids).toEqual(['node1', 'node2', 'node8']);
+        found = await page.$$('aria/item1 item2 item3');
+        ids = await getIds(found);
+        expect(ids).toEqual(['node30']);
+      }
+      const timeEnd = Date.now();
+      logs.push(
+        `Testing using ${name} took
+          ${((timeEnd - timeStart) / 1000).toFixed(2)} seconds`
+      );
+    };
+
+    it('ComputedAccessibilityInfo', async () => {
+      const { page, puppeteer } = getTestState();
+      puppeteer.__experimental_registerCustomQueryHandler(
+        'aria',
+        ariaThroughDOMQueryHandler
+      );
+      await runTest(page, 'ComputedAccessibilityInfo');
+    });
+    it.skip('CDP(DOM)', async () => {
+      const { page, puppeteer } = getTestState();
+      puppeteer.__experimental_registerCustomQueryHandler(
+        'aria',
+        ariaThroughCDPDOMQueryHandler
+      );
+      await runTest(page, 'DOM through CDP');
+    });
+    it('CDP(AXTree)', async () => {
+      const { page, puppeteer } = getTestState();
+      puppeteer.__experimental_registerCustomQueryHandler(
+        'aria',
+        ariaThroughCDPAXTreeQueryHandler
+      );
+      await runTest(page, 'AXTree through CDP');
+    });
+  });
 });

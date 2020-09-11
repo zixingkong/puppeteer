@@ -552,7 +552,7 @@ describe('request interception', function () {
       ]);
       expect(request.method).toBe('POST');
     });
-    it('should amend post data', async () => {
+    it.skip('should amend post data', async () => {
       const { page, server } = getTestState();
 
       await page.goto(server.EMPTY_PAGE);
@@ -569,7 +569,7 @@ describe('request interception', function () {
       ]);
       expect(await serverRequest.postBody).toBe('doggo');
     });
-    it('should amend both post data and method on navigation', async () => {
+    it.skip('should amend both post data and method on navigation', async () => {
       const { page, server } = getTestState();
 
       await page.setRequestInterception(true);

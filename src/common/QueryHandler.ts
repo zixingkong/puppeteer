@@ -17,6 +17,7 @@
 import { ElementHandle } from './JSHandle.js';
 import { SnapshotOptions, SerializedAXNode } from './Accessibility.js';
 import { ExecutionContext } from './ExecutionContext.js';
+import { Protocol } from 'devtools-protocol';
 
 export interface InPageQueryHandler {
   queryOne?: (element: Element | Document, selector: string) => Element | null;
@@ -136,10 +137,10 @@ function traverseTree(
   return res;
 }
 
-function parseAriaSelector(selector: string): { name: string; role: string } {
+function parseAriaSelector(selector: string): { name?: string; role?: string } {
   const s = selector.split('&');
-  const name = s[0];
-  const role = s.length > 1 ? s[1] : '';
+  const name = s[0] || undefined; // can't search for empty name
+  const role = s.length > 1 ? s[1] : undefined;
   return { name, role };
 }
 
@@ -154,13 +155,6 @@ function ariaMatcher(
   };
 }
 
-function nodeIdtoHandle(
-  exeCtx: ExecutionContext,
-  nodeId: number
-): Promise<ElementHandle> {
-  return exeCtx._adoptNodeId(nodeId);
-}
-
 function backendNodeIdtoHandle(
   exeCtx: ExecutionContext,
   backendNodeId: number
@@ -168,34 +162,50 @@ function backendNodeIdtoHandle(
   return exeCtx._adoptBackendNodeId(backendNodeId);
 }
 
-async function ariaFindOneThroughAXTree(
+async function queryAXTree(
+  element: ElementHandle,
+  accessibleName?: string,
+  role?: string
+): Promise<Protocol.Accessibility.AXNode[]> {
+  const client = element._client;
+  // @ts-ignore
+  const { nodes } = await client.send(
+    // @ts-ignore
+    'Accessibility.queryAXTree',
+    {
+      objectId: element._remoteObject.objectId,
+      accessibleName,
+      role,
+    }
+  );
+  // @ts-ignore
+  const filteredNodes = nodes.filter(
+    (node: Protocol.Accessibility.AXNode) => node.role.value !== 'text'
+  );
+  // @ts-ignore
+  return filteredNodes;
+}
+
+async function ariaFindOneThroughCDPAXTree(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle> {
   const exeCtx = element.executionContext();
   const { name, role } = parseAriaSelector(selector);
-  const axTree = await getAXTree(exeCtx, element);
-  const res = traverseTree(
-    axTree,
-    ariaMatcher(name, role),
-    (res) => res.length !== 0
-  );
+  const res = await queryAXTree(element, name, role);
   if (res.length < 1) {
     return null;
   }
   const handle = backendNodeIdtoHandle(exeCtx, res[0].backendDOMNodeId);
   return handle;
 }
-
-async function ariaFindAllThroughAXTree(
+async function ariaFindAllThroughCDPAXTree(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle[]> {
   const exeCtx = element.executionContext();
   const { name, role } = parseAriaSelector(selector);
-  const axTree = await getAXTree(exeCtx, element);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const res = traverseTree(axTree, ariaMatcher(name, role), (_) => false);
+  const res = await queryAXTree(element, name, role);
   const resHandles = Promise.all(
     res.map((axNode) => backendNodeIdtoHandle(exeCtx, axNode.backendDOMNodeId))
   );
@@ -220,7 +230,7 @@ async function getIdsByAccessibleName(
   return nodeIds;
 }
 
-async function ariaFindOneThroughCDP(
+async function ariaFindOneThroughCDPDOM(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle> {
@@ -234,7 +244,7 @@ async function ariaFindOneThroughCDP(
   return handle;
 }
 
-async function ariaFindAllThroughCDP(
+async function ariaFindAllThroughCDPDOM(
   element: ElementHandle,
   selector: string
 ): Promise<ElementHandle[]> {
@@ -302,14 +312,14 @@ function ariaQueryAllThroughDOM(
   return result;
 }
 
-export const ariaThroughAXTreeQueryHandler: InPptrQueryHandler = {
-  findOne: ariaFindOneThroughAXTree,
-  findAll: ariaFindAllThroughAXTree,
+export const ariaThroughCDPAXTreeQueryHandler: InPptrQueryHandler = {
+  findOne: ariaFindOneThroughCDPAXTree,
+  findAll: ariaFindAllThroughCDPAXTree,
 };
 
-export const ariaThroughCDPQueryHandler: InPptrQueryHandler = {
-  findOne: ariaFindOneThroughCDP,
-  findAll: ariaFindAllThroughCDP,
+export const ariaThroughCDPDOMQueryHandler: InPptrQueryHandler = {
+  findOne: ariaFindOneThroughCDPDOM,
+  findAll: ariaFindAllThroughCDPDOM,
 };
 
 export const ariaThroughDOMQueryHandler: QueryHandler = {

@@ -34,9 +34,7 @@ import {
   customQueryHandlers,
   clearQueryHandlers,
   QueryHandler,
-  ariaThroughCDPQueryHandler,
-  ariaThroughAXTreeQueryHandler,
-  ariaThroughDOMQueryHandler,
+  ariaThroughCDPAXTreeQueryHandler,
 } from './QueryHandler.js';
 import { PUPPETEER_REVISIONS } from '../revisions.js';
 
@@ -325,7 +323,5 @@ export class Puppeteer {
    * @internal
    */
   // eslint-disable-next-line @typescript-eslint/camelcase
-  __experimental_ariaQueryHandlerAXT: QueryHandler = ariaThroughAXTreeQueryHandler;
-  __experimental_ariaQueryHandlerCDP: QueryHandler = ariaThroughCDPQueryHandler;
-  __experimental_ariaQueryHandlerDOM: QueryHandler = ariaThroughDOMQueryHandler;
+  __experimental_ariaQueryHandler: QueryHandler = ariaThroughCDPAXTreeQueryHandler;
 }

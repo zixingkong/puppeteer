@@ -540,7 +540,7 @@ describe('ElementHandle specs', function () {
       const { puppeteer } = getTestState();
       puppeteer.__experimental_registerCustomQueryHandler(
         'aria',
-        puppeteer.__experimental_ariaQueryHandlerDOM
+        puppeteer.__experimental_ariaQueryHandler
       );
     });
     after(() => {
@@ -627,6 +627,102 @@ describe('ElementHandle specs', function () {
         const menu = await page.$('aria/menu-label2');
         const id = await menu.evaluate((b: Element) => b.id);
         expect(id).toBe('mnu2');
+      });
+    });
+
+    describe('web tests', async () => {
+      beforeEach(async () => {
+        const { page } = getTestState();
+        await page.setContent(
+          `
+          <h2 id="shown">title</h2>
+          <h2 id="hidden" aria-hidden="true">title</h2>
+          <div id="node1" aria-labeledby="node2"></div>
+          <div id="node2" aria-label="bar"></div>
+          <div id="node3" aria-label="foo"></div>
+          <div id="node4" class="container">
+          <div id="node5" role="button" aria-label="foo"></div>
+          <div id="node6" role="button" aria-label="foo"></div>
+          <div id="node7" hidden role="button" aria-label="foo"></div>
+          <!-- Accessible name not available when element is hidden -->
+          <div id="node8" role="button" aria-label="bar"></div>
+          </div>
+
+          <button id="node10">text content</button>
+          <h1 id="node11">text content</h1>
+          <h1 id="node12" role="presentation">text content</h1>
+          <!-- Accessible name not available when role is "presentation" -->
+          <script>
+          const div = document.createElement('div');
+          const shadowRoot = div.attachShadow({mode: 'open'});
+          const h1 = document.createElement('h1');
+          h1.textContent = 'text content';
+          h1.id = 'node13';
+          shadowRoot.appendChild(h1);
+          document.documentElement.appendChild(div);
+          </script>
+          <!-- Elements inside shadow dom should be found -->
+
+          <img id="node20" src="" alt="Accessible Name">
+          <input id="node21" type="submit" value="Accessible Name">
+          <label id="node22" for="node23">Accessible Name</label>
+            <input id="node23">
+          <!-- Accessible name for the <input> is "Accessible Name" -->
+            <div id="node24" title="Accessible Name"></div>
+
+          <div role="treeitem" id="node30">
+          <div role="treeitem" id="node31">
+          <div role="treeitem" id="node32">item1</div>
+          <div role="treeitem" id="node33">item2</div>
+          </div>
+          <div role="treeitem" id="node34">item3</div>
+          </div>
+          <div aria-describedby="node30"></div>
+          <!-- Accessible name for the <div> is "item1 item2 item3" -->
+          `
+        );
+      });
+      const getIds = async (elements: ElementHandle[]) =>
+        Promise.all(
+          elements.map((element) =>
+            element.evaluate((element: Element) => element.id)
+          )
+        );
+      it('should find by name "foo"', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/foo');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['node3', 'node5', 'node6']);
+      });
+      it('should find by name "bar"', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/bar');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['node1', 'node2', 'node8']);
+      });
+      it('should find treeitem by name', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/item1 item2 item3');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['node30']);
+      });
+      it('should find by role "button"', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/&button');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['node5', 'node6', 'node8', 'node10', 'node21']);
+      });
+      it('should find by role "heading"', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/&heading');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['shown', 'hidden', 'node11', 'node13']);
+      });
+      it('should find both ignored and unignored', async () => {
+        const { page } = getTestState();
+        const found = await page.$$('aria/title');
+        const ids = await getIds(found);
+        expect(ids).toEqual(['shown', 'hidden']);
       });
     });
 
