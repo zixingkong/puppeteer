@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://puppeteer.github.io/blog</id>
+    <title>Introduction to Puppeteer Blog</title>
+    <updated>2021-07-15T09:12:59.476Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://puppeteer.github.io/blog"/>
+    <subtitle>Introduction to Puppeteer Blog</subtitle>
+    <icon>https://puppeteer.github.io/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[CONTRIBUTING]]></title>
+        <id>CONTRIBUTING</id>
+        <link href="https://puppeteer.github.io/puppeteer/blog/CONTRIBUTING"/>
+        <updated>2021-07-15T09:12:59.476Z</updated>
+        <summary type="html"><![CDATA[- How to Contribute]]></summary>
+    </entry>
+</feed>

@@ -1,0 +1,1 @@
+(window.webpackJsonp=window.webpackJsonp||[]).push([[2409],{2480:function(e){e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"CONTRIBUTING","permalink":"/puppeteer/blog/CONTRIBUTING"}]}')}}]);

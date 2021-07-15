@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+    <channel>
+        <title>Introduction to Puppeteer Blog</title>
+        <link>https://puppeteer.github.io/blog</link>
+        <description>Introduction to Puppeteer Blog</description>
+        <lastBuildDate>Thu, 15 Jul 2021 09:12:59 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>https://github.com/jpmonette/feed</generator>
+        <item>
+            <title><![CDATA[CONTRIBUTING]]></title>
+            <link>https://puppeteer.github.io/puppeteer/blog/CONTRIBUTING</link>
+            <guid>CONTRIBUTING</guid>
+            <pubDate>Thu, 15 Jul 2021 09:12:59 GMT</pubDate>
+            <description><![CDATA[- How to Contribute]]></description>
+        </item>
+    </channel>
+</rss>
