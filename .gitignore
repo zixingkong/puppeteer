@@ -21,3 +21,7 @@ temp/
 new-docs/
 puppeteer.tgz
 docs-api-json/
+
+.docusaurus
+.cache-loader
+build/
