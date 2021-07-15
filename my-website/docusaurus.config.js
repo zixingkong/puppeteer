@@ -25,12 +25,12 @@ module.exports = {
                 label: "API",
                 position: "left",
             },
-            // {
-              // to: "/contributing",
-              // // activeBasePath: "docs",
-              // label: "Contribute",
-              // position: "left",
-          // },
+            {
+              to: "blog/contributing",
+              // activeBasePath: "docs",
+              label: "Contribute",
+              position: "left",
+          },
             {
               type: 'docsVersionDropdown',
             },
